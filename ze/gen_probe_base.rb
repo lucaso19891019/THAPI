@@ -56,6 +56,7 @@ EOF
 
 
 
+
 $struct_tracepoint_lambda = lambda { |provider, t|
   puts <<EOF
 TRACEPOINT_EVENT(
