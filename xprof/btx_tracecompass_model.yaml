@@ -1,5 +1,9 @@
+:environment:
+  :entries:
+  - :name: trace_domain
+    :type: string
 :stream_classes:
-  - :name: interval
+  - :name: tracecompass
     :event_common_context_field_class:
       :type: structure
       :members:
@@ -28,7 +32,7 @@
             :field_value_range: 64
             :cast_type: int64_t
     :event_classes:
-      - :name: lttng:host
+      - :name: tracecompass:host
         :payload_field_class:
           :type: structure
           :members:
@@ -45,7 +49,7 @@
               :field_class:
                 :type: bool
                 :cast_type: bt_bool
-      - :name: lttng:device 
+      - :name: tracecompass:device
         :payload_field_class:
           :type: structure
           :members:
