@@ -36,6 +36,16 @@ BTX_TIMELINE_GENERATED = \
 	btx_sink_timeline/metababel/btx_upstream.c \
 	btx_sink_timeline/btx_main.c
 
+BTX_TRACECOMPASS_GENERATED = \
+        btx_filter_tracecompass/metababel/metababel.h \
+        btx_filter_tracecompass/metababel/btx_component.h \
+        btx_filter_tracecompass/metababel/btx_component.c \
+        btx_filter_tracecompass/metababel/btx_upstream.h \
+        btx_filter_tracecompass/metababel/btx_upstream.c \
+        btx_filter_tracecompass/metababel/btx_downstream.h \
+        btx_filter_tracecompass/metababel/btx_downstream.c \
+        btx_filter_tracecompass/btx_main.c
+
 BTX_AGGREG_GENERATED = \
         btx_filter_aggreg/metababel/metababel.h \
         btx_filter_aggreg/metababel/btx_component.h \
@@ -55,16 +65,20 @@ $(BTX_TALLY_GENERATED) &: $(srcdir)/btx_aggreg_model.yaml $(srcdir)/btx_tally_pa
 $(BTX_AGGREG_GENERATED) &: $(srcdir)/btx_interval_model.yaml $(srcdir)/btx_aggreg_model.yaml $(srcdir)/btx_aggreg_params.yaml
 	$(METABABEL) -u $(srcdir)/btx_interval_model.yaml -d $(srcdir)/btx_aggreg_model.yaml -t FILTER -o btx_filter_aggreg -p btx_aggreg -c aggreg --params $(srcdir)/btx_aggreg_params.yaml
 
+$(BTX_TRACECOMPASS_GENERATED) &: $(srcdir)/btx_interval_model.yaml $(srcdir)/btx_tracecompass_model.yaml
+	$(METABABEL) -u $(srcdir)/btx_interval_model.yaml -d $(srcdir)/btx_tracecompass_model.yaml -t FILTER -o btx_filter_tracecompass -p btx_tracecompass -c tracecompass
+
 BUILT_SOURCES = \
 	$(BTX_TALLY_GENERATED) \
 	$(BTX_TIMELINE_GENERATED) \
         $(BTX_AGGREG_GENERATED) \
+	$(BTX_TRACECOMPASS_GENERATED) \
 	xprof_utils.hpp \
 	perfetto_prunned.pb.h \
 	perfetto_prunned.pb.cc
 
 # Library to be packaged
-lib_LTLIBRARIES = libXTally.la libXTimeline.la libXAggreg.la
+lib_LTLIBRARIES = libXTally.la libXTimeline.la libXAggreg.la libXTracecompass.la
 
 # File generated but not distributed
 nodist_libXTally_la_SOURCES = \
@@ -80,6 +94,10 @@ nodist_libXTimeline_la_SOURCES = \
 nodist_libXAggreg_la_SOURCES = \
         $(BTX_AGGREG_GENERATED) \
 	xprof_utils.hpp
+
+nodist_libXTracecompass_la_SOURCES = \
+        $(BTX_TRACECOMPASS_GENERATED) \
+        xprof_utils.hpp
 
 # File not generated
 libXTally_la_SOURCES = \
@@ -97,6 +115,9 @@ libXAggreg_la_SOURCES = \
 	tally_core.hpp \
 	btx_aggreg.cpp
 
+libXTracecompass_la_SOURCES = \
+        btx_tracecompass.cpp
+
 # JSON: Right now we harcode it, We should use pkgtools at some point https://github.com/nlohmann/json/blob/develop/single_include/nlohmann/json.hpp
 
 # Compiler flags
@@ -110,20 +131,28 @@ libXTimeline_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast
 libXTimeline_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS) $(PROTOBUF_CFLAGS)
 libXTimeline_la_LDFLAGS = $(BABELTRACE2_LIBS) $(PROTOBUF_LIBS) -avoid-version -module
 
-
 libXAggreg_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_aggreg
 libXAggreg_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
 libXAggreg_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
 libXAggreg_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
+
+libXTracecompass_la_CPPFLAGS = -I$(top_srcdir)/utils/include -I$(srcdir)/include -I./ -I./btx_filter_tracecompass
+libXTracecompass_la_CFLAGS = -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
+libXTracecompass_la_CXXFLAGS = -std=c++17 -Wall -Wextra -Wno-unused-parameter $(WERROR) -fno-fast-math $(BABELTRACE2_CFLAGS)
+libXTracecompass_la_LDFLAGS = $(BABELTRACE2_LIBS) -avoid-version -module
 
 install-exec-hook:
 	$(MKDIR_P) $(DESTDIR)$(pkglibdir)/bt2
 	$(LN) -f $(DESTDIR)$(libdir)/libXAggreg.so $(DESTDIR)$(pkglibdir)/bt2/libXAggreg.so
 	$(LN) -f $(DESTDIR)$(libdir)/libXTimeline.so $(DESTDIR)$(pkglibdir)/bt2/libXTimeline.so
 	$(LN) -f $(DESTDIR)$(libdir)/libXTally.so $(DESTDIR)$(pkglibdir)/bt2/libXTally.so
+	$(LN) -f $(DESTDIR)$(libdir)/libXTracecompass.so $(DESTDIR)$(pkglibdir)/bt2/libXTracecompass.so
 
 uninstall-hook:
-	$(RM) -f $(DESTDIR)$(pkglibdir)/bt2/libXAggreg.so $(DESTDIR)$(pkglibdir)/bt2/libXTimeline.so $(DESTDIR)$(pkglibdir)/bt2/libXTally.so
+	$(RM) -f $(DESTDIR)$(pkglibdir)/bt2/libXAggreg.so \
+		 $(DESTDIR)$(pkglibdir)/bt2/libXTimeline.so \
+		 $(DESTDIR)$(pkglibdir)/bt2/libXTally.so \
+		 $(DESTDIR)$(pkglibdir)/bt2/libXTracecompass.so
 	-rmdir $(DESTDIR)$(pkglibdir)/bt2
 
 # Cannot use check_LTLIBRARIES because we need the shared version of those
@@ -158,11 +187,12 @@ data_DATA = \
 
 EXTRA_DIST = \
 	btx_interval_model.yaml \
-    btx_aggreg_model.yaml \
+	btx_aggreg_model.yaml \
+	btx_tracecompass_model.yaml \
 	btx_timeline_params.yaml \
 	btx_tally_params.yaml \
 	btx_aggreg_params.yaml \
-    interval_model.yaml \
+	interval_model.yaml \
 	$(TRACE_FILES) \
 	tests/tally.dust.erb \
 	perfetto_prunned.proto \
@@ -171,10 +201,5 @@ EXTRA_DIST = \
 
 CLEANFILES = \
 	iprof \
-	xprof_utils.hpp \
 	$(TALLY_DUST_FILES) \
-	perfetto_prunned.pb.h \
-	perfetto_prunned.pb.cc \
-	$(BTX_TIMELINE_GENERATED) \
-	$(BTX_TALLY_GENERATED) \
-	$(BTX_AGGREG_GENERATED)
+	$(BUILT_SOURCES)
