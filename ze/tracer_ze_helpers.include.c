@@ -185,7 +185,6 @@ struct _ze_event_h {
   UT_hash_handle hh;
   ze_command_list_handle_t command_list;
   ze_event_pool_handle_t event_pool;
-  ze_context_handle_t context;
   _ze_event_flags_t flags;
   /* to remember events in command lists */
   struct _ze_event_h *next, *prev;
@@ -237,9 +236,11 @@ static pthread_mutex_t _ze_event_pools_mutex = PTHREAD_MUTEX_INITIALIZER;
 } while (0)
 
 #define PUT_ZE_EVENT(val) do { \
+  ze_context_handle_t context; \
+  zeEventPoolGetContextHandle(val->event_pool, &context); \
   struct _ze_event_pool_entry *pool = NULL; \
   pthread_mutex_lock(&_ze_event_pools_mutex); \
-  HASH_FIND_PTR(_ze_event_pools, &(val->context), pool); \
+  HASH_FIND_PTR(_ze_event_pools, &context, pool); \
   if (!pool) { \
     pool = (struct _ze_event_pool_entry *)calloc(1, sizeof(struct _ze_event_pool_entry)); \
     if (!pool) { \
@@ -253,7 +254,7 @@ static pthread_mutex_t _ze_event_pools_mutex = PTHREAD_MUTEX_INITIALIZER;
       free(val); \
       break; \
     } \
-    pool->context = val->context; \
+    pool->context = context; \
     HASH_ADD_PTR(_ze_event_pools, context, pool); \
   } \
   val->command_list = NULL; \
@@ -315,7 +316,6 @@ static inline void _register_ze_event(
   FIND_AND_DEL_ZE_OBJ(&command_list, o_h);
   if (o_h) {
     cl_data = (struct _ze_command_list_obj_data *)(o_h->obj_data);
-    _ze_event->context = cl_data->context;
     if (cl_data->flags & _ZE_IMMEDIATE)
       _ze_event->flags |= _ZE_IMMEDIATE_CMD;
   } else
@@ -515,7 +515,10 @@ static void _on_destroy_context(ze_context_handle_t context){
   struct _ze_event_h *tmp = NULL;
   pthread_mutex_lock(&_ze_events_mutex);
   HASH_ITER(hh, _ze_events, ze_event, tmp) {
-    if (ze_event->context == context) {
+    ze_context_handle_t ze_event_context;
+    zeEventPoolGetContextHandle(ze_event->event_pool, &ze_event_context);
+
+    if (ze_event_context == context) {
       HASH_DEL(_ze_events, ze_event);
       if (ze_event->event && !(ze_event->flags & _ZE_PROFILED))
         _profile_event_results(ze_event->event);
